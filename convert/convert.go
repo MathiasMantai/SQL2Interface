@@ -1,20 +1,20 @@
 package convert
 
 import (
-	"path/filepath"
 	"fmt"
+	f "github.com/MathiasMantai/sql2interface/file"
+	"github.com/MathiasMantai/sql2interface/ignore"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"github.com/MathiasMantai/sql2interface/ignore"
-	f	"github.com/MathiasMantai/sql2interface/file"
+	"path/filepath"
 	"strings"
 )
 
 type SQL2Interface struct {
 	SourceDirectory string
 	TargetDirectory string
-	Sql SQL 
-	SqlIgnore *ignore.S2Ignore
+	Sql             SQL
+	SqlIgnore       *ignore.S2Ignore
 }
 
 type SQL struct {
@@ -28,10 +28,10 @@ type Column struct {
 }
 
 func NewSQL2Interface(source string, target string) *SQL2Interface {
-    return &SQL2Interface{
+	return &SQL2Interface{
 		SourceDirectory: source,
-        TargetDirectory: target,
-		SqlIgnore: ignore.NewS2Ignore(source),
+		TargetDirectory: target,
+		SqlIgnore:       ignore.NewS2Ignore(source),
 	}
 }
 
@@ -41,23 +41,23 @@ func (s2i *SQL2Interface) Run() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	
+
 	for _, file := range files {
 		fileName := file.Name()
 
 		if s2i.SqlIgnore.IsIgnored(fileName) || fileName == s2i.SqlIgnore.FileName {
-            continue
-        }
+			continue
+		}
 
 		fileContent, getContentErr := f.GetFileContent(s2i.SourceDirectory, fileName)
-	
+
 		if getContentErr != nil {
 			fmt.Println(getContentErr)
 			continue
-		}	
-	
+		}
+
 		parsedData, err := ParseSQL(fileContent)
-	
+
 		if err != nil {
 			fmt.Println(err)
 			continue
@@ -66,12 +66,12 @@ func (s2i *SQL2Interface) Run() {
 		targetFileName := parsedData.TableName + ".ts"
 		parsedInterface := CreateInterface(parsedData)
 		writeFileError := f.SaveFile(s2i.TargetDirectory, targetFileName, parsedInterface)
-	
+
 		if writeFileError != nil {
 			fmt.Println("=> error detected: " + writeFileError.Error())
 			continue
 		}
-	
+
 		fmt.Printf("=> creating interface %v and saving to %v\n", parsedData.TableName, filepath.Join(s2i.TargetDirectory, fileName))
 	}
 }
