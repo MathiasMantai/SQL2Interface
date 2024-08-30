@@ -48,7 +48,7 @@ func ParseRowColumnDefinitions(rawColumnDefinitions string) ([]Column, error) {
 	var columns []Column
 
 	columnDefinitions := strings.Split(rawColumnDefinitions, ",")
-	fmt.Println(columnDefinitions)
+
 	for _, columnDefinition := range columnDefinitions {
 		columnDefinition = strings.TrimSpace(columnDefinition)
 		chunks := strings.Split(columnDefinition, " ")
@@ -71,14 +71,14 @@ func TypeMapper(colType string) string {
 	}
 
 	switch strings.ToUpper(colType) {
-	case "VARCHAR", "TEXT":
+	case "VARCHAR", "TEXT", "DATE", "DATETIME", "TIMESTAMP":
 		return "String"
-	case "INT", "INTEGER", "DECIMAL", "FLOAT", "DOUBLE":
+	case "INT", "INTEGER", "DECIMAL", "FLOAT", "DOUBLE", "SERIAL":
 		return "Number"
 	case "BOOLEAN":
 		return "Boolean"
 	default:
-		return "string"
+		return "String"
 	}
 }
 
