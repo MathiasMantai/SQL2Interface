@@ -1,11 +1,21 @@
 package convert
 
 import (
+	"path/filepath"
 	"fmt"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"github.com/MathiasMantai/sql2interface/ignore"
+	f	"github.com/MathiasMantai/sql2interface/file"
 	"strings"
 )
+
+type SQL2Interface struct {
+	SourceDirectory string
+	TargetDirectory string
+	Sql SQL 
+	SqlIgnore *ignore.S2Ignore
+}
 
 type SQL struct {
 	TableName string   `json:"table_name"`
@@ -15,6 +25,55 @@ type SQL struct {
 type Column struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
+}
+
+func NewSQL2Interface(source string, target string) *SQL2Interface {
+    return &SQL2Interface{
+		SourceDirectory: source,
+        TargetDirectory: target,
+		SqlIgnore: ignore.NewS2Ignore(source),
+	}
+}
+
+func (s2i *SQL2Interface) Run() {
+	files, err := f.GetFiles(s2i.SourceDirectory)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+	
+	for _, file := range files {
+		fileName := file.Name()
+
+		if s2i.SqlIgnore.IsIgnored(fileName) || fileName == s2i.SqlIgnore.FileName {
+            continue
+        }
+
+		fileContent, getContentErr := f.GetFileContent(s2i.SourceDirectory, fileName)
+	
+		if getContentErr != nil {
+			fmt.Println(getContentErr)
+			continue
+		}	
+	
+		parsedData, err := ParseSQL(fileContent)
+	
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		targetFileName := parsedData.TableName + ".ts"
+		parsedInterface := CreateInterface(parsedData)
+		writeFileError := f.SaveFile(s2i.TargetDirectory, targetFileName, parsedInterface)
+	
+		if writeFileError != nil {
+			fmt.Println("=> error detected: " + writeFileError.Error())
+			continue
+		}
+	
+		fmt.Printf("=> creating interface %v and saving to %v\n", parsedData.TableName, filepath.Join(s2i.TargetDirectory, fileName))
+	}
 }
 
 func ParseSQL(rawSQL string) (SQL, error) {
