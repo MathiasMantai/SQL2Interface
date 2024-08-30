@@ -34,7 +34,7 @@ func (s2 *S2Ignore) Load(dir string) error {
 		return readFileError
 	}
 
-	filesToIgnore := strings.Split(string(fileContent), "\n")
+	filesToIgnore := strings.Split(string(fileContent), "\r\n")
 	s2.FilesToIgnore = filesToIgnore
 
 	return nil
