@@ -71,9 +71,9 @@ func TypeMapper(colType string) string {
 	}
 
 	switch strings.ToUpper(colType) {
-	case "VARCHAR", "TEXT", "DATE", "DATETIME", "TIMESTAMP":
+	case "VARCHAR", "TEXT", "DATE", "DATETIME", "TIMESTAMP", "TIME", "YEAR", "ENUM":
 		return "String"
-	case "INT", "INTEGER", "DECIMAL", "FLOAT", "DOUBLE", "SERIAL":
+	case "INT", "INTEGER", "SMALLINT", "TINYINT", "MEDIUMINT", "BIGINT", "DECIMAL", "NUMERIC", "FLOAT", "DOUBLE", "SERIAL":
 		return "Number"
 	case "BOOLEAN":
 		return "Boolean"
