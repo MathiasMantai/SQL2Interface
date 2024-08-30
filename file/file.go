@@ -40,3 +40,14 @@ func SaveFile(dir string, fileName string, fileContent string) error {
 
 	return nil
 }
+
+func IsDir(filePath string) (bool, error) {
+
+	info, openFileError := os.Stat(filePath)
+
+	if openFileError != nil {
+		return false, openFileError
+	}
+
+	return info.IsDir(), nil
+}

@@ -1,6 +1,7 @@
 package convert
 
 import (
+	"errors"
 	"fmt"
 	f "github.com/MathiasMantai/sql2interface/file"
 	"github.com/MathiasMantai/sql2interface/ignore"
@@ -35,7 +36,52 @@ func NewSQL2Interface(source string, target string) *SQL2Interface {
 	}
 }
 
+func (s2i *SQL2Interface) Convert(fileName string) {
+	if s2i.SqlIgnore.IsIgnored(fileName) || fileName == s2i.SqlIgnore.FileName {
+		return
+	}
+
+	fileContent, getContentErr := f.GetFileContent(s2i.SourceDirectory, fileName)
+
+	if getContentErr != nil {
+		fmt.Println(getContentErr)
+		return
+	}
+
+	parsedData, err := ParseSQL(fileContent)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	targetFileName := parsedData.TableName + ".ts"
+	parsedInterface := CreateInterface(parsedData)
+	writeFileError := f.SaveFile(s2i.TargetDirectory, targetFileName, parsedInterface)
+
+	if writeFileError != nil {
+		fmt.Println("=> error detected: " + writeFileError.Error())
+		return
+	}
+
+	fmt.Printf("=> creating interface %v and saving to %v\n", parsedData.TableName, filepath.Join(s2i.TargetDirectory, fileName))
+}
+
 func (s2i *SQL2Interface) Run() {
+
+	sourceIsDir, checkSourceDirError := f.IsDir(s2i.SourceDirectory)
+
+	fmt.Println(sourceIsDir)
+
+	if checkSourceDirError != nil {
+		panic(errors.New("=> source directory or file could not be found"))
+	}
+
+	if !sourceIsDir {
+		s2i.Convert("")
+		return
+	}
+
 	files, err := f.GetFiles(s2i.SourceDirectory)
 
 	if err != nil {
@@ -44,35 +90,7 @@ func (s2i *SQL2Interface) Run() {
 
 	for _, file := range files {
 		fileName := file.Name()
-
-		if s2i.SqlIgnore.IsIgnored(fileName) || fileName == s2i.SqlIgnore.FileName {
-			continue
-		}
-
-		fileContent, getContentErr := f.GetFileContent(s2i.SourceDirectory, fileName)
-
-		if getContentErr != nil {
-			fmt.Println(getContentErr)
-			continue
-		}
-
-		parsedData, err := ParseSQL(fileContent)
-
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
-		targetFileName := parsedData.TableName + ".ts"
-		parsedInterface := CreateInterface(parsedData)
-		writeFileError := f.SaveFile(s2i.TargetDirectory, targetFileName, parsedInterface)
-
-		if writeFileError != nil {
-			fmt.Println("=> error detected: " + writeFileError.Error())
-			continue
-		}
-
-		fmt.Printf("=> creating interface %v and saving to %v\n", parsedData.TableName, filepath.Join(s2i.TargetDirectory, fileName))
+		s2i.Convert(fileName)
 	}
 }
 

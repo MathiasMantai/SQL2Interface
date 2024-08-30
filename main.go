@@ -1,10 +1,10 @@
 package main
 
 import (
-	"strings"
 	"errors"
 	"flag"
 	c "github.com/MathiasMantai/sql2interface/convert"
+	"strings"
 )
 
 func main() {
