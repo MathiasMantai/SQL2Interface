@@ -67,32 +67,6 @@ func (s2i *SQL2Interface) Convert(fileName string) {
 	fmt.Printf("=> creating interface %v and saving to %v\n", parsedData.TableName, filepath.Join(s2i.TargetDirectory, fileName))
 }
 
-func (s2i *SQL2Interface) Run() {
-
-	sourceIsDir, checkSourceDirError := f.IsDir(s2i.SourceDirectory)
-
-	fmt.Println(sourceIsDir)
-
-	if checkSourceDirError != nil {
-		panic(errors.New("=> source directory or file could not be found"))
-	}
-
-	if !sourceIsDir {
-		s2i.Convert("")
-		return
-	}
-
-	files, err := f.GetFiles(s2i.SourceDirectory)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	for _, file := range files {
-		fileName := file.Name()
-		s2i.Convert(fileName)
-	}
-}
 
 func ParseSQL(rawSQL string) (SQL, error) {
 	var sql SQL
@@ -173,4 +147,32 @@ func CreateInterface(sql SQL) string {
 	}
 
 	return fmt.Sprintf("interface %v {\n%v}", sql.TableName, interfaceFields)
+}
+
+
+//main method to run the program
+//checks whether the source directory is a file and will only convert the file if true.
+func (s2i *SQL2Interface) Run() {
+
+	sourceIsDir, checkSourceDirError := f.IsDir(s2i.SourceDirectory)
+
+	if checkSourceDirError != nil {
+		panic(errors.New("=> source directory or file could not be found"))
+	}
+
+	if !sourceIsDir {
+		s2i.Convert("")
+		return
+	}
+
+	files, err := f.GetFiles(s2i.SourceDirectory)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for _, file := range files {
+		fileName := file.Name()
+		s2i.Convert(fileName)
+	}
 }
