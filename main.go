@@ -1,45 +1,29 @@
 package main
 
 import (
-	"fmt"
-	"path/filepath"
+	"errors"
+	"flag"
 	c "github.com/MathiasMantai/sql2interface/convert"
-	f "github.com/MathiasMantai/sql2interface/file"
+	"github.com/MathiasMantai/sql2interface/file"
+	"strings"
+	"fmt"
 )
 
 func main() {
-	output := "./output"
-	dir := "./sql"
-	files, err := f.GetFiles(dir)
+	output := flag.String("o", "", "source directory to scan for sql files")
+	dir := flag.String("i", "", "target directory to save converted interfaces as typescript files")
+	flag.Parse()
 
-	// fmt.Println(files)
-	if err != nil {
-		fmt.Println(err)
+	conf, _ := file.LoadConfig("./s2iconfig.yaml")
+
+	fmt.Println(conf)
+
+	if strings.TrimSpace(*output) == "" || strings.TrimSpace(*dir) == "" {
+		panic(errors.New("=> input and output have to be specified"))
 	}
 
-	for _, file := range files {
-		fileContent, getContentErr := f.GetFileContent(dir, file.Name())
+	confDir := "./s2iconfig.yaml"
 
-		if getContentErr != nil {
-			fmt.Println(getContentErr)
-			continue
-		}
-
-		parsedData, err := c.ParseSQL(fileContent)
-
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		fileName := parsedData.TableName + ".ts"
-		parsedInterface := c.CreateInterface(parsedData)
-		writeFileError := f.SaveFile(output, fileName, parsedInterface)
-
-		if writeFileError != nil {
-			fmt.Println("=> error detected: " + writeFileError.Error())
-            continue
-		}
-
-		fmt.Printf("=> creating interface %v and saving to %v\n", parsedData.TableName, filepath.Join(output, fileName))
-	}
+	sqlParser := c.NewSQL2Interface(confDir, *dir, *output)
+	sqlParser.Run()
 }

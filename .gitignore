@@ -1,2 +1,4 @@
 sql
 output
+*.exe
+*.yaml

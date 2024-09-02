@@ -3,6 +3,7 @@ package file
 import (
 	"os"
 	"path/filepath"
+	"gopkg.in/yaml.v3"
 )
 
 func GetFiles(dir string) ([]os.DirEntry, error) {
@@ -39,4 +40,42 @@ func SaveFile(dir string, fileName string, fileContent string) error {
 	}
 
 	return nil
+}
+
+func IsDir(filePath string) (bool, error) {
+
+	info, openFileError := os.Stat(filePath)
+
+	if openFileError != nil {
+		return false, openFileError
+	}
+
+	return info.IsDir(), nil
+}
+
+/* YAML */
+
+type Config struct {
+    IgnoreFiles   []string              `yaml:"ignore_files"`
+    IgnoreColumns map[string][]string   `yaml:"ignore_columns"`
+}
+
+
+func LoadConfig(filePath string) (*Config, error) {
+	
+	fileContent, readFileError := os.ReadFile(filePath)
+
+	if readFileError!= nil {
+        panic(readFileError)
+    }
+
+	var conf Config
+
+	unmarshalError := yaml.Unmarshal(fileContent, &conf)
+
+	if unmarshalError!= nil {
+        panic(unmarshalError)
+    }
+
+	return &conf, nil
 }
