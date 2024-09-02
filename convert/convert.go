@@ -28,16 +28,16 @@ type Column struct {
 	Type string `json:"type"`
 }
 
-func NewSQL2Interface(source string, target string) *SQL2Interface {
+func NewSQL2Interface(confDir string, source string, target string) *SQL2Interface {
 	return &SQL2Interface{
 		SourceDirectory: source,
 		TargetDirectory: target,
-		SqlIgnore:       ignore.NewS2Ignore(source),
+		SqlIgnore:       ignore.NewS2Ignore(confDir),
 	}
 }
 
 func (s2i *SQL2Interface) Convert(fileName string) {
-	if s2i.SqlIgnore.IsIgnored(fileName) || fileName == s2i.SqlIgnore.FileName {
+	if s2i.SqlIgnore.IsFileIgnored(fileName) {
 		return
 	}
 
@@ -48,7 +48,7 @@ func (s2i *SQL2Interface) Convert(fileName string) {
 		return
 	}
 
-	parsedData, err := ParseSQL(fileContent)
+	parsedData, err := s2i.ParseSQL(fileName, fileContent)
 
 	if err != nil {
 		fmt.Println(err)
@@ -68,7 +68,7 @@ func (s2i *SQL2Interface) Convert(fileName string) {
 }
 
 
-func ParseSQL(rawSQL string) (SQL, error) {
+func (s2i *SQL2Interface) ParseSQL(fileName string, rawSQL string) (SQL, error) {
 	var sql SQL
 
 	rawSQL = strings.ToUpper(rawSQL)
@@ -77,35 +77,46 @@ func ParseSQL(rawSQL string) (SQL, error) {
 
 	rawTableName := strings.TrimSpace(chunks[0])
 	rawColumns := (strings.Split(chunks[1], ")"))[0]
-	columns, parseColumnsError := ParseRowColumnDefinitions(rawColumns)
+	columns, parseColumnsError := s2i.ParseRowColumnDefinitions(fileName, rawColumns)
 
 	if parseColumnsError != nil {
 		return sql, parseColumnsError
 	}
 
-	sql.TableName = ParseRawTableName(rawTableName)
+	sql.TableName = s2i.ParseRawTableName(rawTableName)
 	sql.Columns = columns
 
 	return sql, nil
 }
 
-func ParseRawTableName(rawTableDefinition string) string {
+func (s2i *SQL2Interface) ParseRawTableName(rawTableDefinition string) string {
 	replacer := strings.NewReplacer("CREATE", "", "TABLE", "", "IF", "", "NOT", "", "EXISTS", "")
 	caser := cases.Title(language.Und, cases.NoLower)
 	return caser.String(strings.ToLower(strings.TrimSpace(replacer.Replace(rawTableDefinition))))
 }
 
-func ParseRowColumnDefinitions(rawColumnDefinitions string) ([]Column, error) {
+func (s2i *SQL2Interface) ParseRowColumnDefinitions(fileName string, rawColumnDefinitions string) ([]Column, error) {
 	var columns []Column
 
 	columnDefinitions := strings.Split(rawColumnDefinitions, ",")
 
 	for _, columnDefinition := range columnDefinitions {
+
+		if strings.TrimSpace(columnDefinition) == "" {
+            continue
+        }
+
 		columnDefinition = strings.TrimSpace(columnDefinition)
 		chunks := strings.Split(columnDefinition, " ")
+
 		caser := cases.Title(language.Und, cases.NoLower)
 		columnName := caser.String(strings.ToLower(strings.TrimSpace(chunks[0])))
 		columnType := caser.String(strings.ToLower(strings.TrimSpace(TypeMapper(chunks[1]))))
+
+		if s2i.SqlIgnore.IsColumnIgnored(fileName, columnName) {
+			continue
+		}
+
 		columns = append(columns, Column{
 			Name: columnName,
 			Type: columnType,

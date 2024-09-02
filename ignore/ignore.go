@@ -2,20 +2,20 @@ package ignore
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
+	"github.com/MathiasMantai/sql2interface/file"
 )
 
 type S2Ignore struct {
-	FileName      string   `json:"file"`
-	FilesToIgnore []string `json:"files_to_ignore"`
+	Directory      string   `json:"file"`
+	Config  *file.Config	`json:"config"`
+
 }
 
-func NewS2Ignore(dir string) *S2Ignore {
+func NewS2Ignore(confDir string) *S2Ignore {
 
-	s2i := &S2Ignore{FileName: ".s2iignore"}
-	readFileError := s2i.Load(dir)
+	s2i := &S2Ignore{Directory: confDir}
+	readFileError := s2i.Load()
 
 	if readFileError != nil {
 		fmt.Println("=> no .s2iignore was found. skipping...")
@@ -24,24 +24,21 @@ func NewS2Ignore(dir string) *S2Ignore {
 	return s2i
 }
 
-func (s2 *S2Ignore) Load(dir string) error {
-	filePath := filepath.Join(dir, s2.FileName)
+func (s2 *S2Ignore) Load() error {
 
-	fileContent, readFileError := os.ReadFile(filePath)
+	conf, loadConfError := file.LoadConfig(s2.Directory)
 
-	if readFileError != nil {
-		s2.FilesToIgnore = []string{}
-		return readFileError
-	}
+	if loadConfError!= nil {
+        return loadConfError
+    }
 
-	filesToIgnore := strings.Split(string(fileContent), "\r\n")
-	s2.FilesToIgnore = filesToIgnore
+	s2.Config = conf
 
 	return nil
 }
 
-func (s2 *S2Ignore) IsIgnored(fileName string) bool {
-	for _, ignoreFile := range s2.FilesToIgnore {
+func (s2 *S2Ignore) IsFileIgnored(fileName string) bool {
+	for _, ignoreFile := range s2.Config.IgnoreFiles {
 		if strings.EqualFold(ignoreFile, fileName) {
 			fmt.Printf("=> file %v will be ignored\n", fileName)
 			return true
@@ -49,4 +46,15 @@ func (s2 *S2Ignore) IsIgnored(fileName string) bool {
 	}
 
 	return false
+}
+
+func (s2 *S2Ignore) IsColumnIgnored(fileName string, columnName string) bool {
+	for _, ignoreColumn := range s2.Config.IgnoreColumns[fileName] {
+        if strings.EqualFold(ignoreColumn, columnName) {
+            fmt.Printf("=> column %v will be ignored\n", columnName)
+            return true
+        }
+    }
+
+    return false
 }
