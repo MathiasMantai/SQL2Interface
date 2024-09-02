@@ -1,6 +1,11 @@
 # SQL2Interface
 This program converts SQL CREATE statements into Typescript interfaces
 
+# Compile
+```
+go build -o s2i.exe
+```
+
 
 # Basic Usage
 In order to use this program you have to specify an input and an output directoy via the i and o flags
