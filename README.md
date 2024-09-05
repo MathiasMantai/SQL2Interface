@@ -41,14 +41,15 @@ interface Users {
 }
 ```
 
+# Config 
+A yaml file called s2iconfig.yaml can be used to configure certain aspects of this program
+
 # Ignore files and columns
-A s2iconfig.yaml can be created to ignore specific files or columns within a file
+Specific files or columns per file can be ignored
 
 ## Example
 
-This example will ignore the files product_prices.sql and warehouses.sql and will ignore the columns created_at and updated_at from users.sql
-
-```
+```yaml
 ignore_files:
  - product_prices.sql
  - warehouses.sql
@@ -57,3 +58,30 @@ ignore_columns:
     - created_at
     - updated_at
 ```
+
+This will completely ignore the files product_prices.sql and warehouses.sql. From the file users.sql the columns created_at and updated_at will be ignored
+
+# Combining multiple Tables into a single Interface
+Multiple Tables can be combined into a single interface.
+<b>Note:</b> This works together with ignore_files and ignore_columns.
+Make sure the files that you want to combined are not included in ignore_files.
+If you want to ignore speciifc columns from tables before you combine them, you can use ignore_columns for this
+
+## Example
+
+```yaml
+ignore_files:
+ - warehouses.sql
+ignore_columns:
+  product_prices.sql:
+    - rowid
+combine_tables:
+  Products:
+    name: 'Products'
+    tables: ['product.sql', 'product_price.sql']
+    convert_single_tables: false
+```
+
+This will combine the tables from product.sql and product_price.sql into an interface Products.
+The column rowid will be ignored for this conversion.
+

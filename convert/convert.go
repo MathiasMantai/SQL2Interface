@@ -3,12 +3,14 @@ package convert
 import (
 	"errors"
 	"fmt"
-	f "github.com/MathiasMantai/sql2interface/file"
-	"github.com/MathiasMantai/sql2interface/ignore"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"path/filepath"
 	"strings"
+
+	f "github.com/MathiasMantai/sql2interface/file"
+	"github.com/MathiasMantai/sql2interface/ignore"
+	"github.com/MathiasMantai/sql2interface/util"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type SQL2Interface struct {
@@ -16,9 +18,11 @@ type SQL2Interface struct {
 	TargetDirectory string
 	Sql             SQL
 	SqlIgnore       *ignore.S2Ignore
+	Combiner []Combiner
 }
 
 type SQL struct {
+	FileName string `json:"file_name"`
 	TableName string   `json:"table_name"`
 	Columns   []Column `json:"columns"`
 }
@@ -28,12 +32,17 @@ type Column struct {
 	Type string `json:"type"`
 }
 
+
 func NewSQL2Interface(confDir string, source string, target string) *SQL2Interface {
-	return &SQL2Interface{
+	s2i := &SQL2Interface{
 		SourceDirectory: source,
 		TargetDirectory: target,
 		SqlIgnore:       ignore.NewS2Ignore(confDir),
 	}
+
+	s2i.LoadCombiner()
+
+	return s2i
 }
 
 func (s2i *SQL2Interface) Convert(fileName string) {
@@ -55,18 +64,28 @@ func (s2i *SQL2Interface) Convert(fileName string) {
 		return
 	}
 
+	addedToCombiner, index := s2i.AddToCombiner(parsedData)
+
+	if addedToCombiner && index != -1 {
+		convertSingleTable := s2i.ConvertSingleTable(index)
+
+		if !convertSingleTable {
+			fmt.Println("  => conversion will be skipped since convert_single_tables is set to false for this file...")
+			return
+		}
+	}
+
 	targetFileName := parsedData.TableName + ".ts"
 	parsedInterface := CreateInterface(parsedData)
 	writeFileError := f.SaveFile(s2i.TargetDirectory, targetFileName, parsedInterface)
 
 	if writeFileError != nil {
-		fmt.Println("=> error detected: " + writeFileError.Error())
+		fmt.Println("x> error detected: " + writeFileError.Error())
 		return
 	}
 
-	fmt.Printf("=> creating interface %v and saving to %v\n", parsedData.TableName, filepath.Join(s2i.TargetDirectory, fileName))
+	fmt.Printf("  => creating interface %v and saving to %v\n", parsedData.TableName, filepath.Join(s2i.TargetDirectory, fileName))
 }
-
 
 func (s2i *SQL2Interface) ParseSQL(fileName string, rawSQL string) (SQL, error) {
 	var sql SQL
@@ -82,7 +101,7 @@ func (s2i *SQL2Interface) ParseSQL(fileName string, rawSQL string) (SQL, error) 
 	if parseColumnsError != nil {
 		return sql, parseColumnsError
 	}
-
+	sql.FileName = fileName
 	sql.TableName = s2i.ParseRawTableName(rawTableName)
 	sql.Columns = columns
 
@@ -103,8 +122,8 @@ func (s2i *SQL2Interface) ParseRowColumnDefinitions(fileName string, rawColumnDe
 	for _, columnDefinition := range columnDefinitions {
 
 		if strings.TrimSpace(columnDefinition) == "" {
-            continue
-        }
+			continue
+		}
 
 		columnDefinition = strings.TrimSpace(columnDefinition)
 		chunks := strings.Split(columnDefinition, " ")
@@ -160,9 +179,8 @@ func CreateInterface(sql SQL) string {
 	return fmt.Sprintf("interface %v {\n%v}", sql.TableName, interfaceFields)
 }
 
-
-//main method to run the program
-//checks whether the source directory is a file and will only convert the file if true.
+// main method to run the program
+// checks whether the source directory is a file and will only convert the file if true.
 func (s2i *SQL2Interface) Run() {
 
 	sourceIsDir, checkSourceDirError := f.IsDir(s2i.SourceDirectory)
@@ -184,6 +202,100 @@ func (s2i *SQL2Interface) Run() {
 
 	for _, file := range files {
 		fileName := file.Name()
+		fmt.Printf("=> attempting to convert file %v to interface...\n", fileName)
 		s2i.Convert(fileName)
 	}
+
+	combinerToInterfaceError := s2i.CombinerToInterface()
+	if combinerToInterfaceError!= nil {
+        fmt.Println("x> error detected: " + combinerToInterfaceError.Error())
+    }
+}
+
+
+/* COMBINER */
+
+type Combiner struct {
+	Tables []string `json:"tables"`
+	Amount int `json:"amount"`
+	InterfaceName string `json:"interface_name"`
+	TableDefinitions []SQL `json:"table_definitions"`
+	ConvertSingleTables bool `json:"convert_single_tables"`
+}
+
+func (s2i *SQL2Interface) LoadCombiner() {
+	combinerConf := s2i.SqlIgnore.Config.CombineTables
+
+	//handling of errors and edge cases
+	if combinerConf == nil {
+        fmt.Println("=> no combine_tables configuration found. skipping...")
+        return 
+    }
+
+	if len(combinerConf) == 0 {
+		fmt.Println("=> no combine_tables configuration found. skipping...")
+		return 
+	}
+
+	for _, singleCombinerConf := range combinerConf {
+		s2i.Combiner = append(s2i.Combiner, Combiner{
+			Tables: singleCombinerConf.Tables,
+            Amount: len(singleCombinerConf.Tables),
+            InterfaceName: singleCombinerConf.Name,
+		})
+	}
+}
+
+func (s2i *SQL2Interface) AddToCombiner(definition SQL) (bool, int) {
+	for i, combiner := range s2i.Combiner {
+		if util.ValueInSlice(interface{}(definition.FileName), util.StringToInterfaceSlice(combiner.Tables)) {
+			s2i.Combiner[i].TableDefinitions = append(s2i.Combiner[i].TableDefinitions, definition)
+			return true, i
+		}
+	}
+
+	return false, -1
+}
+
+func (s2i *SQL2Interface) ConvertSingleTable(index int) bool {
+	return s2i.Combiner[index].ConvertSingleTables
+}
+
+func CombineTables(interfaceName string, interfaceDefinitions ...SQL) []Column {
+	var newSql []Column
+
+	for _, definition := range interfaceDefinitions {
+		newSql = append(newSql, definition.Columns...)
+	}
+
+	return newSql
+}
+
+func (s2i *SQL2Interface) CombinerToInterface() error {
+	fmt.Println("=> attempting to convert combined tables to interfaces...")
+
+	for _, combiner := range s2i.Combiner {
+        interfaceName := combiner.InterfaceName
+		fmt.Printf("  => attempting to create combined interface %v\n", interfaceName)
+        tableDefinitions := combiner.TableDefinitions
+
+        combinedColumns := CombineTables(interfaceName, tableDefinitions...)
+
+        targetFileName := interfaceName
+
+		if !strings.Contains(targetFileName, ".ts") {
+			targetFileName += ".ts"
+        }
+		
+        parsedInterface := CreateInterface(SQL{TableName: interfaceName, Columns: combinedColumns})
+        writeFileError := f.SaveFile(s2i.TargetDirectory, targetFileName, parsedInterface)
+
+        if writeFileError != nil {
+            return writeFileError
+        }
+
+        fmt.Printf("  => creating combined interface %v and saving to %v\n", interfaceName, filepath.Join(s2i.TargetDirectory, targetFileName))
+    }
+
+    return nil
 }
