@@ -1,9 +1,10 @@
 package file
 
 import (
+	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
-	"gopkg.in/yaml.v3"
+	"fmt"
 )
 
 func GetFiles(dir string) ([]os.DirEntry, error) {
@@ -56,26 +57,39 @@ func IsDir(filePath string) (bool, error) {
 /* YAML */
 
 type Config struct {
-    IgnoreFiles   []string              `yaml:"ignore_files"`
-    IgnoreColumns map[string][]string   `yaml:"ignore_columns"`
+	IgnoreFiles   []string                  `yaml:"ignore_files"`
+	IgnoreColumns map[string][]string       `yaml:"ignore_columns"`
+	CombineTables map[string]TableCombine `yaml:"combine_tables"`
 }
 
+type TableCombine struct {
+	Name                string   `yaml:"name"`
+	Tables              []string `yaml:"tables"`
+	ConvertSingleTables bool     `yaml:"convert_single_tables"`
+}
+
+type Field struct {
+	Name string `yaml:"name"`
+	Type string `yaml:"type"`
+}
 
 func LoadConfig(filePath string) (*Config, error) {
-	
+
 	fileContent, readFileError := os.ReadFile(filePath)
 
-	if readFileError!= nil {
-        panic(readFileError)
-    }
+	if readFileError != nil {
+		panic(readFileError)
+	}
 
 	var conf Config
 
 	unmarshalError := yaml.Unmarshal(fileContent, &conf)
 
-	if unmarshalError!= nil {
-        panic(unmarshalError)
-    }
+	if unmarshalError != nil {
+		panic(unmarshalError)
+	}
+
+	fmt.Println(conf)
 
 	return &conf, nil
 }
