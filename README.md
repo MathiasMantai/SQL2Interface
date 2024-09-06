@@ -32,12 +32,12 @@ After executing the program with the following command:
 We will get a file Users.ts in the directory <b>output</b> which will look like this:
 ```ts
 interface Users {
-	Id: Number, 
-	Name: String, 
-	Email: String, 
-	Password: String, 
-	Created_at: String, 
-	Updated_at: String
+    Id: Number, 
+    Name: String,
+    Email: String, 
+    Password: String, 
+    Created_at: String, 
+    Updated_at: String
 }
 ```
 
@@ -75,6 +75,7 @@ ignore_files:
 ignore_columns:
   product_prices.sql:
     - rowid
+    - fk_product
 combine_tables:
   Products:
     name: 'Products'
@@ -83,5 +84,5 @@ combine_tables:
 ```
 
 This will combine the tables from product.sql and product_price.sql into an interface Products.
-The column rowid will be ignored for this conversion.
+The columns rowid and fk_product will be ignored from product_prices.sql for this conversion.
 
