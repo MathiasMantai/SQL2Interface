@@ -1,6 +1,11 @@
 # SQL2Interface
 This program converts SQL CREATE statements into Typescript interfaces
 
+# Compile
+```
+go build -o s2i.exe
+```
+
 
 # Basic Usage
 In order to use this program you have to specify an input and an output directoy via the i and o flags
@@ -44,8 +49,6 @@ Specific files or columns per file can be ignored
 
 ## Example
 
-This example will ignore the files product_prices.sql and warehouses.sql and will ignore the columns created_at and updated_at from users.sql
-
 ```yaml
 ignore_files:
  - product_prices.sql
@@ -55,6 +58,7 @@ ignore_columns:
     - created_at
     - updated_at
 ```
+
 This will completely ignore the files product_prices.sql and warehouses.sql. From the file users.sql the columns created_at and updated_at will be ignored
 
 # Combining multiple Tables into a single Interface
@@ -80,3 +84,4 @@ combine_tables:
 
 This will combine the tables from product.sql and product_price.sql into an interface Products.
 The column rowid will be ignored for this conversion.
+
