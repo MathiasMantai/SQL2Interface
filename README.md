@@ -12,7 +12,7 @@ In order to use this program you have to specify an input and an output directoy
 
 ## Example
 
-In the directory <b>sql</b> we have a file called users.sql with the following create statement:
+In the input directory (specified in the config file) we have a file called users.sql with the following create statement:
 ```sql
 CREATE TABLE users (
     id INT PRIMARY KEY AUTOINCREMENT,
@@ -24,12 +24,7 @@ CREATE TABLE users (
 )
 ```
 
-After executing the program with the following command:
-```bash
-.\s2i.exe -i '.\sql' -o '.\output'
-```
-
-We will get a file Users.ts in the directory <b>output</b> which will look like this:
+We will get a file (which should be secified in the config file) with the following:
 ```ts
 interface Users {
 	Id: Number, 
@@ -38,6 +33,15 @@ interface Users {
 	Password: String, 
 	Created_at: String, 
 	Updated_at: String
+}
+```
+
+```go
+type Users struct {
+	Id int
+	Name string
+	Email string
+	Password string
 }
 ```
 
@@ -79,7 +83,7 @@ ignore_columns:
 
 This will completely ignore the files product_prices.sql and warehouses.sql. From the file users.sql the columns created_at and updated_at will be ignored
 
-# Combining multiple Tables into a single Interface
+# Combining multiple Tables into a single Interface/Struct
 Multiple Tables can be combined into a single interface.
 <b>Note:</b> This works together with ignore_files and ignore_columns.
 Make sure the files that you want to combined are not included in ignore_files.
