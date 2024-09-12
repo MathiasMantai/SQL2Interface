@@ -44,6 +44,24 @@ interface Users {
 # Config 
 A yaml file called s2iconfig.yaml can be used to configure certain aspects of this program
 
+# Specify input and output
+The input and output locations have to be specified. For output, the directories can be different
+
+## Example
+```yaml
+input: "C:\\Users\\<user>\\Desktop\\SQL2Interface\\sql"
+output:
+  typescript: 
+    output_dir: "C:\\Users\\<user>\\Desktop\\SQL2Interface\\output"
+    output_file: "Types.ts"
+    export_types: true
+  go: 
+    output_dir: "C:\\Users\\<user>\\Desktop\\SQL2Interface\\output_go"
+    output_file: "types.go"
+    export_types: true
+    package_name: "main"
+```
+
 # Ignore files and columns
 Specific files or columns per file can be ignored
 
