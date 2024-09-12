@@ -1,4 +1,5 @@
 sql
 output
+output_go
 *.exe
 *.yaml
