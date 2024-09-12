@@ -1,10 +1,9 @@
-package util
-
+package src
 
 import (
-	"testing"
-	"reflect"
 	"github.com/stretchr/testify/assert"
+	"reflect"
+	"testing"
 )
 
 func TestStringToInterfaceSlice(t *testing.T) {
