@@ -49,7 +49,8 @@ type Users struct {
 A yaml file called s2iconfig.yaml can be used to configure certain aspects of this program
 
 # Specify input and output
-The input and output locations have to be specified. For output, the directories can be different
+The input and output locations have to be specified. For output, the directories can be different.
+If you don't specify the output, that type of structure will not be created!!
 
 ## Example
 ```yaml
@@ -108,3 +109,42 @@ combine_tables:
 This will combine the tables from product.sql and product_price.sql into an interface Products.
 The columns rowid and fk_product will be ignored from product_prices.sql for this conversion.
 
+
+# Arbitrary Fields
+You can also define arbitrary fields with arbitrary types for individual tables
+(Note: Right now, arbitrary values cannot be defined for combined tables directly. Instead you can just define the field for one of the components of a combined table)
+
+## Example
+
+```sql
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+)
+```
+
+```yaml
+ignore_columns:
+  users.sql:
+    - created_at
+    - updated_at
+arbitrary_fields:
+  users.sql:
+    name: 'ArbitraryField'
+    type: 'ArbitraryType'
+```
+
+Result:
+```ts
+interface Users {
+	Id: Number, 
+	Name: String, 
+	Email: String, 
+	Password: String, 
+	ArbitraryValue: ArbitraryType
+}
+```

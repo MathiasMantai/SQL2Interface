@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	// "path/filepath"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -100,27 +99,27 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 			continue
 		}
 
-		parsedData, err := s2i.ParseSQL("typescript", fileName, fileContent)
-
+		parsedDataTs, err := s2i.ParseSQL("typescript", fileName, fileContent)
+		s2i.AddArbitraryFields(&parsedDataTs, "typescript")
 		if err != nil {
 			fmt.Println("x> error parsing sql data for type 'typescript: " + err.Error())
 			continue
 		}
 
-		addedToCombiner, index := s2i.AddToCombiner("typescript", parsedData)
+		addedToCombinerTs, indexTs := s2i.AddToCombiner("typescript", parsedDataTs)
 
 		//convert to go struct
-		parsedData, err = s2i.ParseSQL("go", fileName, fileContent)
-
+		parsedDataGo, err := s2i.ParseSQL("go", fileName, fileContent)
+		s2i.AddArbitraryFields(&parsedDataGo, "go")
 		if err != nil {
 			fmt.Println(fmt.Errorf("x> error parsing sql data for type 'go': %v", err.Error()))
 			continue
 		}
 
-		addedToCombiner, index = s2i.AddToCombiner("go", parsedData)
+		addedToCombinerGo, indexGo := s2i.AddToCombiner("go", parsedDataGo)
 
-		if addedToCombiner && index != -1 {
-			convertSingleTable := s2i.ConvertSingleTable("typescript", index)
+		if addedToCombinerGo && indexGo != -1 && addedToCombinerTs && indexTs != -1 {
+			convertSingleTable := s2i.ConvertSingleTable("typescript", indexTs)
 
 			if !convertSingleTable {
 				fmt.Println("  => conversion will be skipped since convert_single_tables is set to false for this file...")
@@ -129,11 +128,11 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 		}
 
 		//add converted structures to outpui
-		output.StructureDefinition["typescript"] = output.StructureDefinition["typescript"] + "\n\n" + CreateInterface(parsedData)
-		output.StructureNames["typescript"] = append(output.StructureNames["typescript"], parsedData.TableName)
+		output.StructureDefinition["typescript"] = output.StructureDefinition["typescript"] + "\n\n" + CreateInterface(parsedDataTs)
+		output.StructureNames["typescript"] = append(output.StructureNames["typescript"], parsedDataTs.TableName)
 
-		output.StructureDefinition["go"] = output.StructureDefinition["go"] + "\n\n" + CreateStruct(parsedData)
-		output.StructureNames["go"] = append(output.StructureNames["go"], parsedData.TableName)
+		output.StructureDefinition["go"] = output.StructureDefinition["go"] + "\n\n" + CreateStruct(parsedDataGo)
+		output.StructureNames["go"] = append(output.StructureNames["go"], parsedDataGo.TableName)
 
 	}
 
@@ -293,7 +292,7 @@ func TypeMapper(definitionType string, colType string) string {
 		case "BOOLEAN", "BOOL":
 			return "Boolean"
 		default:
-			return "String"
+			return colType
 		}
 	} else if definitionType == "go" {
 		switch strings.ToUpper(colType) {
@@ -305,18 +304,18 @@ func TypeMapper(definitionType string, colType string) string {
 			return "int64"
 		case "MEDIUMINT", "SMALLINT", "TINYINT":
 			return "int32"
-		case "FLOAT":
-			return "float"
+		case "FLOAT", "DECIMAL":
+			return "float32"
 		case "DOUBLE":
 			return "float64"
 		case "BOOLEAN", "BOOL":
 			return "bool"
 		default:
-			return "string"
+			return colType
 		}
 	}
 
-	return "string"
+	return colType
 }
 
 /* CREATE STRUCTURES */
@@ -435,14 +434,17 @@ func (s2i *SQL2Interface) LoadCombiner() {
 // - bool: Indicates whether the table definition was added to a combiner (true) or not (false).
 // - int: The index of the combiner in the SQL2Interface's Combiner slice. If no combiner was found, it returns -1.
 func (s2i *SQL2Interface) AddToCombiner(definitionType string, definition SQL) (bool, int) {
+	inCombiner := false
+	combinerIndex := -1
 	for i, combiner := range s2i.Combiner[definitionType] {
 		if ValueInSlice(interface{}(definition.FileName), StringToInterfaceSlice(combiner.Tables)) {
 			s2i.Combiner[definitionType][i].TableDefinitions = append(s2i.Combiner[definitionType][i].TableDefinitions, definition)
-			return true, i
+			inCombiner = true
+			combinerIndex = i
 		}
 	}
 
-	return false, -1
+	return inCombiner, combinerIndex
 }
 
 // ConvertSingleTable checks if the single table conversion is enabled for a combiner.
@@ -546,6 +548,36 @@ func ValidateInputOutput(input string, output string) error {
 	}
 
 	return nil
+}
+
+// AddArbitraryFields adds arbitrary fields to the SQL table definition based on the configuration.
+// It iterates through the arbitrary fields specified in the configuration and adds them to the SQL table definition.
+//
+// Parameters:
+// - sql: A pointer to the SQL struct representing the table definition to which arbitrary fields will be added.
+//
+// The function checks if the file name of the SQL table matches the file name specified in the configuration.
+// If a match is found, it prints a message indicating the addition of the arbitrary field and appends the field to the SQL table definition.
+func (s2i *SQL2Interface) AddArbitraryFields(sql *SQL, definitionType string) {
+	for fileName, fields := range s2i.Config.ArbitraryFields {
+		for _, value := range fields {
+			if fileName == sql.FileName {
+				var newCol Column
+				newCol.Name = value.Name
+
+				if definitionType == "typescript" {
+					newCol.Type = value.TypeTs
+				} else {
+					newCol.Type = value.TypeGo
+				}
+				if strings.TrimSpace(newCol.Type) == "" || strings.TrimSpace(newCol.Name) == "" {
+					continue
+				}
+				fmt.Printf("  => adding arbitrary field: %v : %v for type %v\n", newCol.Name, newCol.Type, definitionType)
+				sql.Columns = append(sql.Columns, newCol)
+			}
+		}
+	}
 }
 
 /* MAIN */
