@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	// "path/filepath"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -107,7 +106,7 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 			continue
 		}
 
-		addedToCombiner, index := s2i.AddToCombiner("typescript", parsedData)
+		addedToCombinerTs, indexTs := s2i.AddToCombiner("typescript", parsedData)
 
 		//convert to go struct
 		parsedData, err = s2i.ParseSQL("go", fileName, fileContent)
@@ -117,10 +116,10 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 			continue
 		}
 
-		addedToCombiner, index = s2i.AddToCombiner("go", parsedData)
+		addedToCombinerGo, indexGo := s2i.AddToCombiner("go", parsedData)
 
-		if addedToCombiner && index != -1 {
-			convertSingleTable := s2i.ConvertSingleTable("typescript", index)
+		if addedToCombinerGo && indexGo != -1 && addedToCombinerTs && indexTs != -1 {
+			convertSingleTable := s2i.ConvertSingleTable("typescript", indexTs)
 
 			if !convertSingleTable {
 				fmt.Println("  => conversion will be skipped since convert_single_tables is set to false for this file...")
@@ -435,14 +434,17 @@ func (s2i *SQL2Interface) LoadCombiner() {
 // - bool: Indicates whether the table definition was added to a combiner (true) or not (false).
 // - int: The index of the combiner in the SQL2Interface's Combiner slice. If no combiner was found, it returns -1.
 func (s2i *SQL2Interface) AddToCombiner(definitionType string, definition SQL) (bool, int) {
+	inCombiner := false
+	combinerIndex := -1
 	for i, combiner := range s2i.Combiner[definitionType] {
 		if ValueInSlice(interface{}(definition.FileName), StringToInterfaceSlice(combiner.Tables)) {
 			s2i.Combiner[definitionType][i].TableDefinitions = append(s2i.Combiner[definitionType][i].TableDefinitions, definition)
-			return true, i
+			inCombiner = true
+			combinerIndex = i
 		}
 	}
 
-	return false, -1
+	return inCombiner, combinerIndex
 }
 
 // ConvertSingleTable checks if the single table conversion is enabled for a combiner.
