@@ -99,24 +99,24 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 			continue
 		}
 
-		parsedData, err := s2i.ParseSQL("typescript", fileName, fileContent)
+		parsedDataTs, err := s2i.ParseSQL("typescript", fileName, fileContent)
 
 		if err != nil {
 			fmt.Println("x> error parsing sql data for type 'typescript: " + err.Error())
 			continue
 		}
 
-		addedToCombinerTs, indexTs := s2i.AddToCombiner("typescript", parsedData)
+		addedToCombinerTs, indexTs := s2i.AddToCombiner("typescript", parsedDataTs)
 
 		//convert to go struct
-		parsedData, err = s2i.ParseSQL("go", fileName, fileContent)
+		parsedDataGo, err := s2i.ParseSQL("go", fileName, fileContent)
 
 		if err != nil {
 			fmt.Println(fmt.Errorf("x> error parsing sql data for type 'go': %v", err.Error()))
 			continue
 		}
 
-		addedToCombinerGo, indexGo := s2i.AddToCombiner("go", parsedData)
+		addedToCombinerGo, indexGo := s2i.AddToCombiner("go", parsedDataGo)
 
 		if addedToCombinerGo && indexGo != -1 && addedToCombinerTs && indexTs != -1 {
 			convertSingleTable := s2i.ConvertSingleTable("typescript", indexTs)
@@ -128,11 +128,11 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 		}
 
 		//add converted structures to outpui
-		output.StructureDefinition["typescript"] = output.StructureDefinition["typescript"] + "\n\n" + CreateInterface(parsedData)
-		output.StructureNames["typescript"] = append(output.StructureNames["typescript"], parsedData.TableName)
+		output.StructureDefinition["typescript"] = output.StructureDefinition["typescript"] + "\n\n" + CreateInterface(parsedDataTs)
+		output.StructureNames["typescript"] = append(output.StructureNames["typescript"], parsedDataTs.TableName)
 
-		output.StructureDefinition["go"] = output.StructureDefinition["go"] + "\n\n" + CreateStruct(parsedData)
-		output.StructureNames["go"] = append(output.StructureNames["go"], parsedData.TableName)
+		output.StructureDefinition["go"] = output.StructureDefinition["go"] + "\n\n" + CreateStruct(parsedDataGo)
+		output.StructureNames["go"] = append(output.StructureNames["go"], parsedDataGo.TableName)
 
 	}
 
@@ -236,7 +236,7 @@ func (s2i *SQL2Interface) ParseRawTableName(rawTableDefinition string) string {
 // - error: An error encountered during the parsing process, or nil if no error occurred.
 func (s2i *SQL2Interface) ParseRowColumnDefinitions(definitionType string, fileName string, rawColumnDefinitions string) ([]Column, error) {
 	var columns []Column
-
+	fmt.Println(definitionType, fileName, rawColumnDefinitions)
 	columnDefinitions := strings.Split(rawColumnDefinitions, ",")
 
 	for _, columnDefinition := range columnDefinitions {
@@ -265,7 +265,7 @@ func (s2i *SQL2Interface) ParseRowColumnDefinitions(definitionType string, fileN
 			Type: columnType,
 		})
 	}
-
+	fmt.Println(columns)
 	return columns, nil
 }
 
