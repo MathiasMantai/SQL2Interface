@@ -69,8 +69,6 @@ func (s2i *SQL2Interface) LoadConfig(confDir string) {
 	s2i.Config = conf
 }
 
-
-
 // Convert processes a single SQL file and converts it into an interface or struct based on the configuration settings.
 // It checks if the file should be ignored, retrieves the file content, parses the SQL, adds the parsed data to the combiner,
 // and creates and saves the interface or struct files based on the configuration settings.
@@ -81,7 +79,6 @@ func (s2i *SQL2Interface) LoadConfig(confDir string) {
 // Return:
 // This function does not return any value. However, it prints error messages if any errors occur during the conversion process.
 func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
-	fmt.Println(files)
 	var output ConvertedStructure
 	output.StructureDefinition = make(map[string]string)
 	output.StructureNames = make(map[string][]string)
@@ -106,42 +103,34 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 		parsedData, err := s2i.ParseSQL("typescript", fileName, fileContent)
 
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("x> error parsing sql data for type 'typescript: " + err.Error())
 			continue
 		}
 
 		addedToCombiner, index := s2i.AddToCombiner("typescript", parsedData)
 
-		if addedToCombiner && index != -1 {
-			convertSingleTable := s2i.ConvertSingleTable("typescript", index)
-	
-			if !convertSingleTable {
-				fmt.Println("  => conversion will be skipped for type 'typescript' since convert_single_tables is set to false for this file...")
-				continue
-			}
-		}
-
-		output.StructureDefinition["typescript"] = output.StructureDefinition["typescript"] + "\n\n" + CreateInterface(parsedData)
-		output.StructureNames["typescript"] = append(output.StructureNames["typescript"], parsedData.TableName)
-
 		//convert to go struct
 		parsedData, err = s2i.ParseSQL("go", fileName, fileContent)
 
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println(fmt.Errorf("x> error parsing sql data for type 'go': %v", err.Error()))
 			continue
 		}
 
 		addedToCombiner, index = s2i.AddToCombiner("go", parsedData)
 
 		if addedToCombiner && index != -1 {
-			convertSingleTable := s2i.ConvertSingleTable("go", index)
-	
+			convertSingleTable := s2i.ConvertSingleTable("typescript", index)
+
 			if !convertSingleTable {
 				fmt.Println("  => conversion will be skipped since convert_single_tables is set to false for this file...")
 				continue
 			}
 		}
+
+		//add converted structures to outpui
+		output.StructureDefinition["typescript"] = output.StructureDefinition["typescript"] + "\n\n" + CreateInterface(parsedData)
+		output.StructureNames["typescript"] = append(output.StructureNames["typescript"], parsedData.TableName)
 
 		output.StructureDefinition["go"] = output.StructureDefinition["go"] + "\n\n" + CreateStruct(parsedData)
 		output.StructureNames["go"] = append(output.StructureNames["go"], parsedData.TableName)
@@ -150,8 +139,6 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 
 	//handle conmbiners
 	s2i.CombinerToStructure(&output)
-
-
 
 	//get options for output
 	targetDirTs, tsDirExists := s2i.Config.Output["typescript"]["output_dir"]
@@ -168,7 +155,7 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 		if exportTypesTs == "true" && tsExportTypesExists {
 			s2i.AddInterfaceExports(&content, output.StructureNames["typescript"])
 		}
-		fmt.Println(content)
+
 		SaveFile(targetDirTs, targetFileNameTs, content)
 	}
 
@@ -181,14 +168,17 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 	}
 }
 
-
-
+// AddInterfaceExports adds export statements for the given interface names to the content string.
+// It first adds a tab to each interface name in the slice.
+// Then it formats the content string with the export statements for the interface names.
+//
+// Parameters:
+// - content: A pointer to a string representing the content where the export statements will be added.
+// - interfaceNames: A slice of strings representing the names of the interfaces to be exported.
 func (s2i *SQL2Interface) AddInterfaceExports(content *string, interfaceNames []string) {
 	AddTabToSlice(&interfaceNames)
 	*content = fmt.Sprintf("%v\n\nexport{\n%v\n}", *content, strings.Join(interfaceNames, ",\n"))
 }
-
-
 
 // ParseSQL parses a raw SQL string into a SQL struct and returns it along with any encountered error.
 // It extracts the table name and column details from the raw SQL string and populates the SQL struct accordingly.
@@ -221,7 +211,6 @@ func (s2i *SQL2Interface) ParseSQL(definitionType string, fileName string, rawSQ
 	return sql, nil
 }
 
-
 // ParseRawTableName extracts and processes the table name from a raw SQL table definition.
 // It removes SQL keywords like "CREATE", "TABLE", "IF", "NOT", and "EXISTS", and converts the remaining string to PascalCase.
 //
@@ -235,7 +224,6 @@ func (s2i *SQL2Interface) ParseRawTableName(rawTableDefinition string) string {
 	caser := cases.Title(language.Und, cases.NoLower)
 	return caser.String(strings.ToLower(strings.TrimSpace(replacer.Replace(rawTableDefinition))))
 }
-
 
 // ParseRowColumnDefinitions parses a raw SQL column definitions string into a slice of Column structs.
 // It extracts column names and types from the raw string, applies type mapping, and ignores specified columns.
@@ -281,7 +269,6 @@ func (s2i *SQL2Interface) ParseRowColumnDefinitions(definitionType string, fileN
 
 	return columns, nil
 }
-
 
 // TypeMapper maps SQL column types to their corresponding TypeScript types.
 // It takes a string representing an SQL column type as input and returns a string representing the corresponding TypeScript type.
@@ -332,7 +319,6 @@ func TypeMapper(definitionType string, colType string) string {
 	return "string"
 }
 
-
 /* CREATE STRUCTURES */
 
 // CreateInterface generates a TypeScript interface based on the provided SQL table definition.
@@ -365,7 +351,6 @@ func CreateInterface(sql SQL) string {
 
 	return fmt.Sprintf("interface %v {\n%v}", sql.TableName, interfaceFields)
 }
-
 
 // CreateStruct generates a Go struct based on the provided SQL table definition.
 // It iterates through the columns of the SQL table and constructs the struct fields.
@@ -402,7 +387,6 @@ type Combiner struct {
 	ConvertSingleTables bool     `json:"convert_single_tables"`
 }
 
-
 // LoadCombiner initializes and loads the combiner configuration from the SQL2Interface instance.
 // It iterates through the combine_tables configuration and populates the Combiner slice with the parsed data.
 // If the combine_tables configuration is not found or is empty, it prints a message and returns without any further action.
@@ -425,18 +409,19 @@ func (s2i *SQL2Interface) LoadCombiner() {
 	// Iterating through the combine_tables configuration and populating the Combiner slice
 	for _, singleCombinerConf := range combinerConf {
 		s2i.Combiner["typescript"] = append(s2i.Combiner["typescript"], Combiner{
-			Tables:        singleCombinerConf.Tables,
-			Amount:        len(singleCombinerConf.Tables),
-			InterfaceName: singleCombinerConf.Name,
+			Tables:              singleCombinerConf.Tables,
+			Amount:              len(singleCombinerConf.Tables),
+			InterfaceName:       singleCombinerConf.Name,
 			ConvertSingleTables: singleCombinerConf.ConvertSingleTables,
 		})
 		s2i.Combiner["go"] = append(s2i.Combiner["go"], Combiner{
-			Tables:        singleCombinerConf.Tables,
-			Amount:        len(singleCombinerConf.Tables),
-			InterfaceName: singleCombinerConf.Name,
+			Tables:              singleCombinerConf.Tables,
+			Amount:              len(singleCombinerConf.Tables),
+			InterfaceName:       singleCombinerConf.Name,
 			ConvertSingleTables: singleCombinerConf.ConvertSingleTables,
 		})
 	}
+
 }
 
 // AddToCombiner checks if the SQL table definition's file name is in the list of tables to combine.
@@ -493,7 +478,12 @@ func CombineTables(interfaceName string, interfaceDefinitions ...SQL) []Column {
 	return newSql
 }
 
-
+// CombinerToStructure converts combined SQL table definitions to interfaces or structs.
+// It iterates through the combiners for each output type (TypeScript and Go) and combines the table definitions.
+// For each combiner, it creates a new SQL table definition with the combined columns and appends it to the output structure.
+// If the output type is TypeScript, it adds the interface definition to the TypeScript section of the output structure.
+// If the output type is Go, it adds the struct definition to the Go section of the output structure.
+// Finally, it returns nil to indicate successful execution.
 func (s2i *SQL2Interface) CombinerToStructure(output *ConvertedStructure) error {
 	fmt.Println("=> attempting to convert combined tables to interfaces...")
 
@@ -505,25 +495,35 @@ func (s2i *SQL2Interface) CombinerToStructure(output *ConvertedStructure) error 
 
 			newSQL := SQL{
 				TableName: structureName,
-                Columns:   combinedColumns,
+				Columns:   combinedColumns,
 			}
+
 			if outputType == "typescript" {
 				(*output).StructureDefinition["typescript"] = output.StructureDefinition["typescript"] + "\n\n" + CreateInterface(newSQL)
 				output.StructureNames["typescript"] = append(output.StructureNames["typescript"], structureName)
 			} else if outputType == "go" {
 				(*output).StructureDefinition["go"] = output.StructureDefinition["go"] + "\n\n" + CreateStruct(newSQL)
-				(*output).StructureNames["go"] = append(output.StructureNames["go"], structureName)		
+				(*output).StructureNames["go"] = append(output.StructureNames["go"], structureName)
 			}
 		}
 	}
-
+	fmt.Println("    => conversion successful")
 	return nil
 }
 
 /* VALIDATE */
+// ValidateCreateStatement checks if the given SQL statement is a valid CREATE TABLE statement.
+//
+// Parameters:
+// - statement: A string representing the SQL statement to be validated.
+//
+// Return:
+// - error: An error indicating an invalid CREATE TABLE statement if the statement is not valid.
+//          Returns nil if the statement is valid.
 func ValidateCreateStatement(statement string) error {
 	statement = strings.ToUpper(statement)
 
+	// Check if the statement contains both "CREATE" and "TABLE" keywords.
 	if !strings.Contains(statement, "CREATE") || !strings.Contains(statement, "TABLE") {
 		return errors.New("invalid CREATE statement found")
 	}
@@ -531,6 +531,15 @@ func ValidateCreateStatement(statement string) error {
 	return nil
 }
 
+// ValidateInputOutput checks if the input and output file paths are not empty.
+//
+// Parameters:
+// - input: A string representing the input file path.
+// - output: A string representing the output file path.
+//
+// Return:
+//   - error: An error indicating that either the input or output file path is empty.
+//     Returns nil if both paths are not empty.
 func ValidateInputOutput(input string, output string) error {
 	if input == "" || output == "" {
 		return errors.New("input and output file paths cannot be empty")
@@ -541,8 +550,10 @@ func ValidateInputOutput(input string, output string) error {
 
 /* MAIN */
 
-// main method to run the program
-// checks whether the source directory is a file and will only convert the file if true.
+// Run starts the conversion process for SQL files to TypeScript and Go interfaces/structs.
+// It retrieves the list of SQL files from the input directory specified in the configuration.
+// If any error occurs during file retrieval, it prints the error message.
+// Finally, it calls the Convert function to perform the actual conversion.
 func (s2i *SQL2Interface) Run() {
 	sourceDir := s2i.Config.Input
 	files, err := GetFiles(sourceDir)

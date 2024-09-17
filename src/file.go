@@ -7,6 +7,13 @@ import (
 	"path/filepath"
 )
 
+// GetFiles retrieves a list of files  within a specified directory.
+//
+// dir: The path to the directory to be scanned.
+//
+// Returns:
+// - A slice of os.DirEntry objects representing the files and directories found within the specified directory.
+// - An error if any occurred during the directory scanning process.
 func GetFiles(dir string) ([]os.DirEntry, error) {
 
 	files, readDirError := os.ReadDir(dir)
@@ -18,6 +25,15 @@ func GetFiles(dir string) ([]os.DirEntry, error) {
 	return files, nil
 }
 
+// GetFileContent retrieves the content of a file within a specified directory.
+//
+// Parameters:
+// - dir: The path to the directory where the file is located.
+// - fileName: The name of the file to be read.
+//
+// Returns:
+// - A string containing the content of the file.
+// - An error if any occurred during file reading.
 func GetFileContent(dir string, fileName string) (string, error) {
 	filePath := filepath.Join(dir, fileName)
 
@@ -30,6 +46,15 @@ func GetFileContent(dir string, fileName string) (string, error) {
 	return string(fileContent), nil
 }
 
+// SaveFile writes the provided file content to a specified file within a directory.
+//
+// Parameters:
+// - dir: The path to the directory where the file will be saved.
+// - fileName: The name of the file to be created or overwritten.
+// - fileContent: The content to be written to the file.
+//
+// Returns:
+// - An error if any occurred during file writing. If the function completes successfully, it returns nil.
 func SaveFile(dir string, fileName string, fileContent string) error {
 
 	filePath := filepath.Join(dir, fileName)
@@ -43,6 +68,14 @@ func SaveFile(dir string, fileName string, fileContent string) error {
 	return nil
 }
 
+// IsDir checks if the specified file path represents a directory.
+//
+// filePath: The path to the file or directory to be checked.
+//
+// Returns:
+//   - A boolean value indicating whether the specified file path represents a directory.
+//     Returns true if the path is a directory, false otherwise.
+//   - An error if any occurred during the file or directory check. If the function completes successfully, it returns nil.
 func IsDir(filePath string) (bool, error) {
 
 	info, openFileError := os.Stat(filePath)
@@ -76,12 +109,19 @@ type Field struct {
 	Type string `yaml:"type"`
 }
 
+// LoadConfig reads a YAML configuration file and unmarshals its content into a Config struct.
+//
+// filePath: The path to the YAML configuration file.
+//
+// Returns:
+// - A pointer to a Config struct containing the unmarshalled configuration data.
+// - An error if any occurred during file reading or unmarshalling.
 func LoadConfig(filePath string) (*Config, error) {
 
 	fileContent, readFileError := os.ReadFile(filePath)
 
 	if readFileError != nil {
-		panic(readFileError)
+		return nil, readFileError
 	}
 
 	var conf Config
@@ -89,7 +129,7 @@ func LoadConfig(filePath string) (*Config, error) {
 	unmarshalError := yaml.Unmarshal(fileContent, &conf)
 
 	if unmarshalError != nil {
-		panic(unmarshalError)
+		return nil, unmarshalError
 	}
 
 	return &conf, nil

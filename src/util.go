@@ -17,7 +17,6 @@ func StringToInterfaceSlice(arr []string) []interface{} {
 	return result
 }
 
-
 func AddTabToSlice(values *[]string) {
 	for i, item := range *values {
 		(*values)[i] = "\t" + item
