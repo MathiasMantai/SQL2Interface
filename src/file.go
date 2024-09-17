@@ -90,13 +90,13 @@ func IsDir(filePath string) (bool, error) {
 /* YAML */
 
 type Config struct {
-	IgnoreFiles     []string                     `yaml:"ignore_files"`
-	IgnoreColumns   map[string][]string          `yaml:"ignore_columns"`
-	CombineTables   map[string]TableCombine      `yaml:"combine_tables"`
-	Input           string                       `yaml:"input"`
-	Output          map[string]map[string]string `yaml:"output"`
-	SingleFile      bool                         `yaml:"single_file"`
-	ArbitraryFields map[string]map[string]Field  `yaml:"arbitrary_fields"`
+	IgnoreFiles     []string                             `yaml:"ignore_files"`
+	IgnoreColumns   map[string][]string                  `yaml:"ignore_columns"`
+	CombineTables   map[string]TableCombine              `yaml:"combine_tables"`
+	Input           string                               `yaml:"input"`
+	Output          map[string]map[string]string         `yaml:"output"`
+	SingleFile      bool                                 `yaml:"single_file"`
+	ArbitraryFields map[string]map[string]ArbitraryField `yaml:"arbitrary_fields"`
 }
 
 type TableCombine struct {
@@ -108,6 +108,12 @@ type TableCombine struct {
 type Field struct {
 	Name string `yaml:"name"`
 	Type string `yaml:"type"`
+}
+
+type ArbitraryField struct {
+	Name   string `yaml:"name"`
+	TypeGo string `yaml:"type_go"`
+	TypeTs string `yaml:"type_ts"`
 }
 
 // LoadConfig reads a YAML configuration file and unmarshals its content into a Config struct.

@@ -44,7 +44,6 @@ func NewSQL2Interface(confDir string) *SQL2Interface {
 	s2i := &SQL2Interface{}
 	s2i.LoadConfig(confDir)
 	s2i.LoadCombiner()
-	fmt.Println(s2i.Config)
 	return s2i
 }
 
@@ -101,7 +100,7 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 		}
 
 		parsedDataTs, err := s2i.ParseSQL("typescript", fileName, fileContent)
-		s2i.AddArbitraryFields(&parsedDataTs)
+		s2i.AddArbitraryFields(&parsedDataTs, "typescript")
 		if err != nil {
 			fmt.Println("x> error parsing sql data for type 'typescript: " + err.Error())
 			continue
@@ -111,7 +110,7 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 
 		//convert to go struct
 		parsedDataGo, err := s2i.ParseSQL("go", fileName, fileContent)
-		s2i.AddArbitraryFields(&parsedDataGo)
+		s2i.AddArbitraryFields(&parsedDataGo, "go")
 		if err != nil {
 			fmt.Println(fmt.Errorf("x> error parsing sql data for type 'go': %v", err.Error()))
 			continue
@@ -559,12 +558,23 @@ func ValidateInputOutput(input string, output string) error {
 //
 // The function checks if the file name of the SQL table matches the file name specified in the configuration.
 // If a match is found, it prints a message indicating the addition of the arbitrary field and appends the field to the SQL table definition.
-func (s2i *SQL2Interface) AddArbitraryFields(sql *SQL) {
+func (s2i *SQL2Interface) AddArbitraryFields(sql *SQL, definitionType string) {
 	for fileName, fields := range s2i.Config.ArbitraryFields {
 		for _, value := range fields {
 			if fileName == sql.FileName {
-				fmt.Printf("=> adding arbitrary field: %v : %v\n", value.Name, value.Type)
-				sql.Columns = append(sql.Columns, Column(value))
+				var newCol Column
+				newCol.Name = value.Name
+
+				if definitionType == "typescript" {
+					newCol.Type = value.TypeTs
+				} else {
+					newCol.Type = value.TypeGo
+				}
+				if strings.TrimSpace(newCol.Type) == "" || strings.TrimSpace(newCol.Name) == "" {
+					continue
+				}
+				fmt.Printf("  => adding arbitrary field: %v : %v for type %v\n", newCol.Name, newCol.Type, definitionType)
+				sql.Columns = append(sql.Columns, newCol)
 			}
 		}
 	}
