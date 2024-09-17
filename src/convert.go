@@ -44,6 +44,7 @@ func NewSQL2Interface(confDir string) *SQL2Interface {
 	s2i := &SQL2Interface{}
 	s2i.LoadConfig(confDir)
 	s2i.LoadCombiner()
+	fmt.Println(s2i.Config)
 	return s2i
 }
 
@@ -100,7 +101,7 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 		}
 
 		parsedDataTs, err := s2i.ParseSQL("typescript", fileName, fileContent)
-
+		s2i.AddArbitraryFields(&parsedDataTs)
 		if err != nil {
 			fmt.Println("x> error parsing sql data for type 'typescript: " + err.Error())
 			continue
@@ -110,7 +111,7 @@ func (s2i *SQL2Interface) Convert(files []fs.DirEntry) {
 
 		//convert to go struct
 		parsedDataGo, err := s2i.ParseSQL("go", fileName, fileContent)
-
+		s2i.AddArbitraryFields(&parsedDataGo)
 		if err != nil {
 			fmt.Println(fmt.Errorf("x> error parsing sql data for type 'go': %v", err.Error()))
 			continue
@@ -236,7 +237,7 @@ func (s2i *SQL2Interface) ParseRawTableName(rawTableDefinition string) string {
 // - error: An error encountered during the parsing process, or nil if no error occurred.
 func (s2i *SQL2Interface) ParseRowColumnDefinitions(definitionType string, fileName string, rawColumnDefinitions string) ([]Column, error) {
 	var columns []Column
-	fmt.Println(definitionType, fileName, rawColumnDefinitions)
+
 	columnDefinitions := strings.Split(rawColumnDefinitions, ",")
 
 	for _, columnDefinition := range columnDefinitions {
@@ -265,7 +266,7 @@ func (s2i *SQL2Interface) ParseRowColumnDefinitions(definitionType string, fileN
 			Type: columnType,
 		})
 	}
-	fmt.Println(columns)
+
 	return columns, nil
 }
 
@@ -292,7 +293,7 @@ func TypeMapper(definitionType string, colType string) string {
 		case "BOOLEAN", "BOOL":
 			return "Boolean"
 		default:
-			return "String"
+			return colType
 		}
 	} else if definitionType == "go" {
 		switch strings.ToUpper(colType) {
@@ -304,18 +305,18 @@ func TypeMapper(definitionType string, colType string) string {
 			return "int64"
 		case "MEDIUMINT", "SMALLINT", "TINYINT":
 			return "int32"
-		case "FLOAT":
-			return "float"
+		case "FLOAT", "DECIMAL":
+			return "float32"
 		case "DOUBLE":
 			return "float64"
 		case "BOOLEAN", "BOOL":
 			return "bool"
 		default:
-			return "string"
+			return colType
 		}
 	}
 
-	return "string"
+	return colType
 }
 
 /* CREATE STRUCTURES */
@@ -548,6 +549,25 @@ func ValidateInputOutput(input string, output string) error {
 	}
 
 	return nil
+}
+
+// AddArbitraryFields adds arbitrary fields to the SQL table definition based on the configuration.
+// It iterates through the arbitrary fields specified in the configuration and adds them to the SQL table definition.
+//
+// Parameters:
+// - sql: A pointer to the SQL struct representing the table definition to which arbitrary fields will be added.
+//
+// The function checks if the file name of the SQL table matches the file name specified in the configuration.
+// If a match is found, it prints a message indicating the addition of the arbitrary field and appends the field to the SQL table definition.
+func (s2i *SQL2Interface) AddArbitraryFields(sql *SQL) {
+	for fileName, fields := range s2i.Config.ArbitraryFields {
+		for _, value := range fields {
+			if fileName == sql.FileName {
+				fmt.Printf("=> adding arbitrary field: %v : %v\n", value.Name, value.Type)
+				sql.Columns = append(sql.Columns, Column(value))
+			}
+		}
+	}
 }
 
 /* MAIN */

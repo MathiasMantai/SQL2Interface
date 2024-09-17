@@ -90,12 +90,13 @@ func IsDir(filePath string) (bool, error) {
 /* YAML */
 
 type Config struct {
-	IgnoreFiles   []string                     `yaml:"ignore_files"`
-	IgnoreColumns map[string][]string          `yaml:"ignore_columns"`
-	CombineTables map[string]TableCombine      `yaml:"combine_tables"`
-	Input         string                       `yaml:"input"`
-	Output        map[string]map[string]string `yaml:"output"`
-	SingleFile    bool                         `yaml:"single_file"`
+	IgnoreFiles     []string                     `yaml:"ignore_files"`
+	IgnoreColumns   map[string][]string          `yaml:"ignore_columns"`
+	CombineTables   map[string]TableCombine      `yaml:"combine_tables"`
+	Input           string                       `yaml:"input"`
+	Output          map[string]map[string]string `yaml:"output"`
+	SingleFile      bool                         `yaml:"single_file"`
+	ArbitraryFields map[string]map[string]Field  `yaml:"arbitrary_fields"`
 }
 
 type TableCombine struct {
